@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="./index.css">
+</head>
+<body>
+    <div class="page-top">
+        <div class="page-content">
+            <h2>记性管家-备忘录</h2>
+        </div>
+        <div class="main">
+            <h3 class="big-title">添加任务：</h3>
+            <input type="text" class="task-input" v-model="todo" @keyup.enter="keyup">
+            <!-- v-mode 如果type时text就绑定到value，如果不是就绑定到checked -->
+            <ul class="task-count">
+                <li v-show="list.length">{{filterList}}个任务未完成</li>
+                <li class="action">
+                    <a href="#all">所有任务</a>
+                    <a href="#unfinish">未完成任务</a>
+                    <a href="#finish">完成任务</a>
+                </li>
+            </ul>
+            <div class="tasks">
+                <h3 class="big-title">任务列表：</h3>
+                <span class="no-task-tip" v-show="!list.length">当前任务列表为空</span>
+                <ul class="todo-list">
+                    <li v-for="item in filterTodo" :class="{completed:item.checked,editing:editedTodo == item}" >
+                        <div class="view">
+                            <input type="checkbox" class="toggle" v-model="item.checked">
+                            <label @dblclick="editingTodo(item)">{{item.title}}</label>
+                            <!-- 双击的时候会选中的标签的索引 -->
+                            <button class="destroy" @click="del(item,$event)"></button>
+                            <!-- 第一个参数默认给传回e -->
+                        </div>
+                        <input type="text" class="edit" v-model="item.title" v-focus="editedTodo == item"
+                        @keyup.enter="editTodo()" @keyup.esc="backTodo(item)" @blur="editTodo">
+                        <!-- v-mode 如果type时text就绑定到value，如果不是就绑定到checked -->
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="https://unpkg.com/vue">></script>
+    <script type="text/javascript">
+        var storage = {
+            get(key){
+                return JSON.parse(window.localStorage.getItem(key));
+            },
+            save(key,value){
+                window.localStorage.setItem(key,JSON.stringify(value));
+            }
+        }
+
+        var list = storage.get("todo")||[];
+        // 装任务列表用的 
+
+        var filterHash = {
+            all : function (list) {
+                return list;
+            },
+            finish : function (list) {
+                return list.filter(function (item) {
+                    return item.checked;
+                })
+            },
+            unfinish : function (list) {
+                return list.filter(function (item) {
+                    return !item.checked;
+                    // false的时候是未完成的所以加个！会变成true会被选中。
+                })
+            }
+
+        }
+
+        const vm = new Vue({
+            el:".main",
+            data:{
+                list,
+                todo:'',
+                editedTodo:'',
+                beforeTodo:'',
+                // 记录上一次的状态
+                visilibal:'all'
+            },
+            watch:{
+                // 监听函数(浅，深监听)
+                list:{
+                    deep:true,
+                    handler:function() {
+                        // 必须是handler才能存储
+                        storage.save("todo",this.list);
+                    }
+                }
+            },
+            computed:{
+                filterList: function () {
+                    return this.list.filter(function (item){return !item.checked}).length; 
+                },
+                filterTodo: function() {
+                    return filterHash[this.visilibal||'all'](this.list);
+                    // 这是调用哈希值过滤算法的方法把list传给all、finish、unfinish三个函数
+                }
+            },
+            methods:{
+                keyup(e){
+                    // console.log(e); 
+                    // if (e.which == 13){
+                    //  this.list.push({
+                    //      title: e.target.value,
+                    //      checked:false
+                    //  })
+                    //  e.target.value = '';
+                    // }
+                    this.list.push({
+                        title: this.todo,
+                        checked: false
+                    })
+                    this.todo = "";
+                },
+                del(todo,e){
+                    // console.log(todo,e);
+                    // 删除
+                    let index = this.list.indexOf(todo);
+                    console.log(index);
+                    this.list.splice(index,1);
+                },
+                editingTodo(todo){
+                    console.log(todo);
+                    // 双击显示双击的标签
+                    this.beforeTodo = todo.title;
+                    this.editedTodo = todo;
+                },
+                editTodo(){
+                    // 让它不在现实input，退出编辑
+                    this.editedTodo = '';
+                },
+                backTodo(todo){
+                    todo.title = this.beforeTodo;
+                    this.editedTodo = '';
+
+                },
+            },
+            directives:{
+                    focus :{
+                        update(el,binding){
+                            if (binding.value){
+                                el.focus();
+                            }
+                        }
+                    }
+                }
+
+        })
+        // 挂载vue到main上
+
+        function hashChange(){
+            
+            vm.visilibal = window.location.hash.slice(1);
+            console.log(vm.visilibal);
+        }
+        window.addEventListener('hashchange',hashChange);
+        hashChange();
+    </script>
+</body>
+</html>
